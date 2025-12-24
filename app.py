@@ -1,136 +1,67 @@
-# ============================================
-# YouTube Influencer Performance Analysis
-# MCA Mini Project
-# ============================================
-
+import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-# --------------------------------------------
-# 1. Load Dataset
-# --------------------------------------------
-file_path = "youtube_channel_info_v1.csv"
-df = pd.read_csv(file_path)
+st.set_page_config(page_title="YouTube Influencer Analytics", layout="wide")
 
-print("Dataset Loaded Successfully")
-print(df.head())
+# ---- TITLE ----
+st.title("📊 YouTube Influencer Performance Analysis")
+st.write("MCA Mini Project – Streamlit Dashboard")
 
-# --------------------------------------------
-# 2. Data Cleaning
-# --------------------------------------------
-df['category'] = df['category'].fillna('Unknown')
-df['country'] = df['country'].fillna('Unknown')
-df['created_date'] = pd.to_datetime(df['created_date'], errors='coerce')
+# ---- LOAD DATA ----
+@st.cache_data
+def load_data():
+    return pd.read_csv("youtube_channel_info_v1.csv")
 
-# Remove zero subscribers
-df = df[df['subscriber_count'] > 0]
+df = load_data()
 
-print("\nMissing Values Handled")
+st.success("Dataset Loaded Successfully")
 
-# --------------------------------------------
-# 3. Basic Statistics
-# --------------------------------------------
-print("\nBasic Statistics:")
-print(df[['subscriber_count', 'view_count', 'video_count']].describe())
+# ---- SHOW DATA ----
+st.subheader("Dataset Preview")
+st.dataframe(df.head())
 
-# --------------------------------------------
-# 4. Top 10 Influencers by Subscribers
-# --------------------------------------------
+# ---- BASIC METRICS ----
+st.subheader("Key Statistics")
+
+col1, col2, col3 = st.columns(3)
+col1.metric("Total Channels", df.shape[0])
+col2.metric("Total Subscribers", int(df['subscriber_count'].sum()))
+col3.metric("Total Views", int(df['view_count'].sum()))
+
+# ---- TOP SUBSCRIBERS ----
+st.subheader("Top 10 Influencers by Subscribers")
+
 top_subs = df.nlargest(10, 'subscriber_count')
 
-plt.figure(figsize=(10,6))
-sns.barplot(x='subscriber_count', y='channel_name', data=top_subs)
-plt.title("Top 10 YouTube Influencers by Subscribers")
-plt.xlabel("Subscribers")
-plt.ylabel("Channel Name")
-plt.tight_layout()
-plt.savefig("top10_subscribers.png")
-plt.close()
+fig1, ax1 = plt.subplots(figsize=(8,5))
+sns.barplot(x='subscriber_count', y='channel_name', data=top_subs, ax=ax1)
+ax1.set_xlabel("Subscribers")
+ax1.set_ylabel("Channel")
+st.pyplot(fig1)
 
-# --------------------------------------------
-# 5. Top 10 Influencers by Views
-# --------------------------------------------
+# ---- TOP VIEWS ----
+st.subheader("Top 10 Influencers by Views")
+
 top_views = df.nlargest(10, 'view_count')
 
-plt.figure(figsize=(10,6))
-sns.barplot(x='view_count', y='channel_name', data=top_views)
-plt.title("Top 10 YouTube Influencers by Views")
-plt.xlabel("Total Views")
-plt.ylabel("Channel Name")
-plt.tight_layout()
-plt.savefig("top10_views.png")
-plt.close()
+fig2, ax2 = plt.subplots(figsize=(8,5))
+sns.barplot(x='view_count', y='channel_name', data=top_views, ax=ax2)
+ax2.set_xlabel("Views")
+ax2.set_ylabel("Channel")
+st.pyplot(fig2)
 
-# --------------------------------------------
-# 6. Engagement Metric (Views per Subscriber)
-# --------------------------------------------
+# ---- ENGAGEMENT ----
+st.subheader("Engagement Analysis")
+
 df['views_per_subscriber'] = df['view_count'] / df['subscriber_count']
+top_engage = df.nlargest(10, 'views_per_subscriber')
 
-top_engagement = df.nlargest(10, 'views_per_subscriber')
+fig3, ax3 = plt.subplots(figsize=(8,5))
+sns.barplot(x='views_per_subscriber', y='channel_name', data=top_engage, ax=ax3)
+ax3.set_xlabel("Views per Subscriber")
+ax3.set_ylabel("Channel")
+st.pyplot(fig3)
 
-plt.figure(figsize=(10,6))
-sns.barplot(x='views_per_subscriber', y='channel_name', data=top_engagement)
-plt.title("Top 10 Influencers by Engagement")
-plt.xlabel("Views per Subscriber")
-plt.ylabel("Channel Name")
-plt.tight_layout()
-plt.savefig("top10_engagement.png")
-plt.close()
-
-# --------------------------------------------
-# 7. Subscribers vs Views Correlation
-# --------------------------------------------
-plt.figure(figsize=(8,6))
-sns.scatterplot(x='subscriber_count', y='view_count', data=df)
-plt.title("Subscribers vs Views")
-plt.xlabel("Subscribers")
-plt.ylabel("Views")
-plt.tight_layout()
-plt.savefig("subscribers_vs_views.png")
-plt.close()
-
-correlation = df['subscriber_count'].corr(df['view_count'])
-print("\nCorrelation between Subscribers and Views:", correlation)
-
-# --------------------------------------------
-# 8. Category-wise Distribution
-# --------------------------------------------
-plt.figure(figsize=(8,8))
-df['category'].value_counts().head(10).plot.pie(autopct='%1.1f%%')
-plt.title("Top YouTube Categories")
-plt.ylabel("")
-plt.tight_layout()
-plt.savefig("category_distribution.png")
-plt.close()
-
-# --------------------------------------------
-# 9. Country-wise Distribution
-# --------------------------------------------
-plt.figure(figsize=(10,6))
-df['country'].value_counts().head(10).plot(kind='bar')
-plt.title("Top Countries with YouTube Influencers")
-plt.xlabel("Country")
-plt.ylabel("Number of Channels")
-plt.tight_layout()
-plt.savefig("country_distribution.png")
-plt.close()
-
-# --------------------------------------------
-# 10. Performance Score & Ranking
-# --------------------------------------------
-df['norm_subscribers'] = df['subscriber_count'] / df['subscriber_count'].max()
-df['norm_views'] = df['view_count'] / df['view_count'].max()
-
-df['performance_score'] = df['norm_subscribers'] + df['norm_views']
-
-top_performers = df.sort_values(by='performance_score', ascending=False).head(10)
-
-print("\nTop 10 Influencers by Performance Score:")
-print(top_performers[['channel_name', 'subscriber_count', 'view_count', 'performance_score']])
-
-# --------------------------------------------
-# 11. End Message
-# --------------------------------------------
-print("\nYouTube Influencer Performance Analysis Completed Successfully")
-print("Graphs saved as PNG files in project folder")
+st.success("Dashboard Loaded Successfully ✅")
